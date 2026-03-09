@@ -1,0 +1,158 @@
+{% extends 'base.html' %}
+
+{% block title %}Insights - AI Finance Tracker{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2>AI-Powered Insights</h2>
+    <div>
+        <select class="form-select d-inline w-auto me-2" id="timeFilter">
+            <option value="30">Last 30 Days</option>
+            <option value="90">Last 90 Days</option>
+            <option value="365">Last Year</option>
+        </select>
+        <button class="btn btn-outline-secondary" id="exportCSV"><i class="bi bi-download"></i> Export CSV</button>
+    </div>
+</div>
+
+<!-- Key Insights Cards -->
+<div class="row mb-5">
+    <div class="col-md-3 mb-4">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-body text-center">
+                <i class="bi bi-trend-up fs-1 text-success mb-3"></i>
+                <h3>{{ "%.1f"|format(trends.savings_rate|default(0)) }}%</h3>
+                <p class="text-muted">Savings Rate</p>
+                <small class="text-success fw-bold">↑ {{ "%.1f"|format(trends.savings_change|default(0)) }}% vs last month</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 mb-4">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-body text-center">
+                <i class="bi bi-lightning-charge fs-1 text-warning mb-3"></i>
+                <h3>{{ top_category.name|default('N/A') }}</h3>
+                <p class="text-muted">Top Spending Category</p>
+                <h5 class="text-danger">₹{{ "%.2f"|format(top_category.amount|default(0)) }}</h5>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 mb-4">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-body text-center">
+                <i class="bi bi-graph-down fs-1 text-primary mb-3"></i>
+                <h3>{{ predictions.next_month_expenses|default(0)|round(0) }}</h3>
+                <p class="text-muted">Predicted Expenses</p>
+                <small class="text-primary">AI Forecast</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 mb-4">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-body text-center">
+                <i class="bi bi-award fs-1 text-info mb-3"></i>
+                <h3>{{ budget_advice.score|default(0) }}/100</h3>
+                <p class="text-muted">Budget Health Score</p>
+                <div class="progress mt-2" style="height: 8px;">
+                    <div class="progress-bar bg-info" style="width: {{ budget_advice.score|default(0) }}%"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Charts Grid -->
+<div class="row">
+    <div class="col-lg-8 mb-4">
+        <div class="card h-100">
+            <div class="card-header">
+                <h5>Spending Trends Over Time</h5>
+            </div>
+            <div class="card-body p-0">
+                <div id="trendChart" style="height: 400px; width: 100%;"></div>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-4 mb-4">
+        <div class="card h-100">
+            <div class="card-header">
+                <h5>Category Breakdown</h5>
+            </div>
+            <div class="card-body p-0">
+                <div id="categoryChart" style="height: 300px; width: 100%;"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- AI Advice Section -->
+<div class="card mt-4">
+    <div class="card-header bg-gradient text-white">
+        <h5><i class="bi bi-robot me-2"></i>AI Financial Advice</h5>
+    </div>
+    <div class="card-body">
+        <div class="alert alert-info">
+            <h6>{{ advice.title|default('Smart Spending Tips') }}</h6>
+            <p>{{ advice.message|default('Your top spending category is taking 40% of expenses. Consider setting a monthly limit to improve savings rate.') }}</p>
+            <ul class="mb-0">
+                {% for tip in advice.tips|default(['Track daily spends', 'Review subscriptions', 'Set savings goals']) %}
+                <li>✅ {{ tip }}</li>
+                {% endfor %}
+            </ul>
+        </div>
+    </div>
+</div>
+
+<!-- Transaction Summary Table -->
+<div class="card mt-4">
+    <div class="card-header">
+        <h5>Recent Activity Summary</h5>
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-sm">
+                <thead>
+                    <tr>
+                        <th>Period</th>
+                        <th>Income</th>
+                        <th>Expenses</th>
+                        <th>Net</th>
+                        <th>Trend</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for period in period_summary|default([]) %}
+                    <tr>
+                        <td>{{ period.label }}</td>
+                        <td class="text-success fw-bold">₹{{ "%.2f"|format(period.income) }}</td>
+                        <td class="text-danger fw-bold">₹{{ "%.2f"|format(period.expenses) }}</td>
+                        <td class="{{ 'text-success' if period.net > 0 else 'text-danger' }} fw-bold">
+                            ₹{{ "%.2f"|format(period.net) }}
+                        </td>
+                        <td>
+                            <span class="badge {{ 'bg-success' if period.trend > 0 else 'bg-danger' }}">
+                                {{ "%.1f"|format(period.trend) }}%
+                            </span>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+<script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+<script>
+    // Render insights charts using your dashboard.js
+    {% if trend_graph %}
+    renderChart({{ trend_graph|tojson|safe }}, 'trendChart');
+    {% endif %}
+    {% if category_graph %}
+    renderChart({{ category_graph|tojson|safe }}, 'categoryChart');
+    {% endif %}
+</script>
+{% endblock %}

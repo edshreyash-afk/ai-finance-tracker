@@ -1,0 +1,184 @@
+{% extends 'base.html' %}
+
+{% block title %}Dashboard - AI Finance Tracker{% endblock %}
+
+{% block content %}
+<div class="row">
+    <!-- Summary Cards -->
+    <div class="col-md-3 mb-4">
+        <div class="card text-white bg-primary">
+            <div class="card-body">
+                <h5>Total Balance</h5>
+                <h2>₹{{ "%.2f"|format(balance|default(0)) }}</h2>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 mb-4">
+        <div class="card text-white bg-success">
+            <div class="card-body">
+                <h5>Income</h5>
+                <h2>₹{{ "%.2f"|format(income|default(0)) }}</h2>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 mb-4">
+        <div class="card text-white bg-warning">
+            <div class="card-body">
+                <h5>Expenses</h5>
+                <h2>₹{{ "%.2f"|format(expenses|default(0)) }}</h2>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 mb-4">
+        <div class="card text-white bg-info">
+            <div class="card-body">
+                <h5>Transactions</h5>
+                <h2>{{ transactions|length|default(0) }}</h2>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Charts Row -->
+<div class="row mb-4">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title">Expense Distribution</h5>
+                <div id="expenseChart" style="width:100%;height:400px;"></div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title">Monthly Balance Trend</h5>
+                <div id="balanceChart" style="width:100%;height:400px;"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Recent Transactions -->
+<div class="card mb-4">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h5>Recent Transactions</h5>
+        <a href="{{ url_for('transaction.view_transactions') }}" class="btn btn-primary btn-sm">View All</a>
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-striped table-hover">
+                <thead class="table-dark">
+                    <tr>
+                        <th>Date</th>
+                        <th>Description</th>
+                        <th>Amount</th>
+                        <th>Category</th>
+                        <th>Type</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for trans in transactions %}
+                    <tr>
+                        <td>{{ trans.date.strftime('%Y-%m-%d') }}</td>
+                        <td>{{ trans.description or 'N/A' }}</td>
+                        <td class="{{ 'text-success fw-bold' if trans.amount > 0 else 'text-danger fw-bold' }}">
+                            ₹{{ "%.2f"|format(trans.amount) }}
+                        </td>
+                        <td>{{ trans.category or 'Uncategorized' }}</td>
+                        <td>
+                            <span class="badge {{ 'bg-success' if trans.amount > 0 else 'bg-danger' }}">
+                                {{ 'Income' if trans.amount > 0 else 'Expense' }}
+                            </span>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr><td colspan="5" class="text-center py-4">No transactions yet. Add one below!</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Quick Add Button -->
+<button class="btn btn-success btn-lg mb-3" data-bs-toggle="modal" data-bs-target="#addTransactionModal">
+    <i class="bi bi-plus-circle me-2"></i>+ Add Transaction
+</button>
+
+<!-- Quick Add Modal -->
+<div class="modal fade" id="addTransactionModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="POST" action="{{ url_for('transaction.add_transaction') }}">
+                <div class="modal-header">
+                    <h5 class="modal-title">Add New Transaction</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    {{ form.hidden_tag() if form else '' }}
+                    <div class="mb-3">
+                        <label class="form-label">Description</label>
+                        <input type="text" class="form-control" name="description" placeholder="e.g., Grocery shopping" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Amount</label>
+                        <input type="number" step="0.01" class="form-control" name="amount" placeholder="0.00" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Category</label>
+                        <select class="form-select" name="category">
+                            <option value="">Select Category</option>
+                            <option value="Food">Food</option>
+                            <option value="Transport">Transport</option>
+                            <option value="Entertainment">Entertainment</option>
+                            <option value="Salary">Salary</option>
+                            <option value="Other">Other</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="type" id="income" value="income" required>
+                            <label class="form-check-label" for="income">Income</label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="type" id="expense" value="expense" required>
+                            <label class="form-check-label" for="expense">Expense</label>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Add Transaction</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+<script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+<script>
+
+const pieData = JSON.parse('{{ graphJSON_pie | safe if graphJSON_pie else "null" }}');
+const lineData = JSON.parse('{{ graphJSON_line | safe if graphJSON_line else "null" }}');
+
+if (pieData) {
+    renderChart(pieData, "expenseChart");
+} else {
+    document.getElementById("expenseChart").innerHTML =
+        '<p class="text-muted text-center py-5 m-0">No expense data yet.</p>';
+}
+
+if (lineData) {
+    renderChart(lineData, "balanceChart");
+} else {
+    document.getElementById("balanceChart").innerHTML =
+        '<p class="text-muted text-center py-5 m-0">No trend data yet.</p>';
+}
+
+</script>
+{% endblock %}
+

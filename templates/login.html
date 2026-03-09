@@ -1,0 +1,109 @@
+{% extends 'base.html' %}
+
+{% block title %}Login - AI Finance Tracker{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-6 col-lg-5 col-xl-4">
+        <div class="card shadow-sm">
+            <div class="card-body p-5">
+                <div class="text-center mb-5">
+                    <h1 class="h3 mb-1">Welcome Back</h1>
+                    <p class="text-muted">Sign in to your account</p>
+                </div>
+
+                <!-- Flash Messages -->
+                {% with messages = get_flashed_messages(with_categories=true) %}
+                    {% if messages %}
+                        {% for category, message in messages %}
+                            <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show" role="alert">
+                                {{ message }}
+                                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                            </div>
+                        {% endfor %}
+                    {% endif %}
+                {% endwith %}
+
+                <!-- Login Form -->
+                <form method="POST" action="{{ url_for('auth.login') }}">
+                    {{ form.hidden_tag() }}
+                    
+                    <div class="mb-4">
+                        <label for="email" class="form-label">Email Address</label>
+                        {{ form.email(class="form-control form-control-lg", placeholder="name@example.com", required=True) }}
+                        {% if form.email.errors %}
+                            <div class="invalid-feedback d-block">
+                                {% for error in form.email.errors %}{{ error }}{% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+
+                    <div class="mb-4">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <label for="password" class="form-label">Password</label>
+                            <a href="{{ url_for('auth.forgot_password') }}" class="small text-decoration-none">Forgot?</a>
+                        </div>
+                        <div class="input-group">
+                            {{ form.password(class="form-control form-control-lg", placeholder="Enter password", required=True) }}
+                            <button class="btn btn-outline-secondary" type="button" id="togglePassword">
+                                <i class="bi bi-eye"></i>
+                            </button>
+                        </div>
+                        {% if form.password.errors %}
+                            <div class="invalid-feedback d-block">
+                                {% for error in form.password.errors %}{{ error }}{% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+
+                    <div class="mb-4">
+                        <div class="form-check">
+                            {{ form.remember_me(class="form-check-input") }}
+                            {{ form.remember_me.label(class="form-check-label") }}
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary btn-lg w-100 mb-3">
+                        <i class="bi bi-box-arrow-in-right me-2"></i>Sign In
+                    </button>
+                </form>
+
+                <div class="divider text-center my-4 d-flex align-items-center">
+                    <span class="divider-text">or</span>
+                </div>
+
+                <div class="text-center">
+                    <a href="{{ url_for('auth.register') }}" class="btn btn-outline-primary btn-lg w-100 mb-2">
+                        Create New Account
+                    </a>
+                    <p class="text-muted small mb-0">
+                        By signing in, you agree to our <a href="#">Terms</a> and <a href="#">Privacy Policy</a>
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Toggle password visibility
+    document.getElementById('togglePassword').addEventListener('click', function() {
+        const password = document.querySelector('input[name="password"]');
+        const icon = this.querySelector('i');
+        if (password.type === 'password') {
+            password.type = 'text';
+            icon.classList.remove('bi-eye');
+            icon.classList.add('bi-eye-slash');
+        } else {
+            password.type = 'password';
+            icon.classList.remove('bi-eye-slash');
+            icon.classList.add('bi-eye');
+        }
+    });
+
+    // Auto-focus email
+    document.querySelector('input[name="email"]').focus();
+</script>
+{% endblock %}

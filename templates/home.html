@@ -1,0 +1,78 @@
+{% extends 'base.html' %}
+
+{% block title %}AI Finance Tracker - Track Your Money Smartly{% endblock %}
+
+{% block content %}
+<!-- Hero Section -->
+<div class="jumbotron bg-primary text-white text-center py-5 mb-5">
+    <div class="container">
+        <h1 class="display-4 fw-bold mb-4">AI Finance Tracker</h1>
+        <p class="lead mb-4">Track expenses, analyze spending patterns, and get AI-powered insights to master your finances.</p>
+        {% if current_user.is_authenticated %}
+            <a href="{{ url_for('dashboard.index') }}" class="btn btn-light btn-lg me-3">Go to Dashboard</a>
+            <a href="{{ url_for('insights.index') }}" class="btn btn-outline-light btn-lg">View Insights</a>
+        {% else %}
+            <a href="{{ url_for('auth.login') }}" class="btn btn-light btn-lg me-3">Get Started - Login</a>
+            <a href="{{ url_for('auth.register') }}" class="btn btn-outline-light btn-lg">Create Free Account</a>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Features Section -->
+<div class="container">
+    <div class="row text-center mb-5">
+        <div class="col-md-4 mb-4">
+            <div class="feature-icon mb-3">
+                <i class="bi bi-graph-up-arrow fs-1 text-primary"></i>
+            </div>
+            <h3>Smart Analytics</h3>
+            <p>AI-powered insights, spending trends, and category breakdowns with interactive charts.</p>
+        </div>
+        <div class="col-md-4 mb-4">
+            <div class="feature-icon mb-3">
+                <i class="bi bi-credit-card fs-1 text-success"></i>
+            </div>
+            <h3>Easy Tracking</h3>
+            <p>Quickly add income/expenses with categories, search, and export features.</p>
+        </div>
+        <div class="col-md-4 mb-4">
+            <div class="feature-icon mb-3">
+                <i class="bi bi-shield-check fs-1 text-info"></i>
+            </div>
+            <h3>Secure & Private</h3>
+            <p>Your data stays yours. Secure login and local-first processing.</p>
+        </div>
+    </div>
+
+    <!-- Stats (for logged-in users) -->
+    {% if current_user.is_authenticated %}
+    <div class="row text-center py-5 bg-light rounded">
+        <div class="col-md-3">
+            <h2 class="text-primary">{{ stats.total_transactions|default(0) }}</h2>
+            <p>Total Transactions</p>
+        </div>
+        <div class="col-md-3">
+            <h2 class="text-success">{{ "%.2f"|format(stats.balance|default(0)) }}</h2>
+            <p>Current Balance</p>
+        </div>
+        <div class="col-md-3">
+            <h2 class="text-warning">{{ "%.2f"|format(stats.monthly_income|default(0)) }}</h2>
+            <p>This Month Income</p>
+        </div>
+        <div class="col-md-3">
+            <h2 class="text-danger">{{ "%.2f"|format(stats.monthly_expenses|default(0)) }}</h2>
+            <p>This Month Expenses</p>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- CTA Section -->
+    <div class="text-center py-5">
+        {% if not current_user.is_authenticated %}
+            <h3>Ready to take control of your finances?</h3>
+            <p class="lead mb-4">Join thousands tracking smarter today.</p>
+            <a href="{{ url_for('auth.register') }}" class="btn btn-primary btn-lg">Start Free Trial</a>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

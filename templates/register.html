@@ -1,0 +1,156 @@
+{% extends 'base.html' %}
+
+{% block title %}Sign Up - AI Finance Tracker{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-6 col-lg-5 col-xl-4">
+        <div class="card shadow-sm">
+            <div class="card-body p-5">
+                <div class="text-center mb-5">
+                    <h1 class="h3 mb-1">Create Account</h1>
+                    <p class="text-muted">Join AI Finance Tracker today</p>
+                </div>
+
+                <!-- Flash Messages -->
+                {% with messages = get_flashed_messages(with_categories=true) %}
+                    {% if messages %}
+                        {% for category, message in messages %}
+                            <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show" role="alert">
+                                {{ message }}
+                                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                            </div>
+                        {% endfor %}
+                    {% endif %}
+                {% endwith %}
+
+                <!-- Register Form -->
+                <form method="POST" action="{{ url_for('auth.register') }}">
+                    {{ form.hidden_tag() }}
+                    
+                    <div class="mb-4">
+                        <label for="username" class="form-label">Username</label>
+                        {{ form.username(class="form-control form-control-lg", placeholder="Your display name", required=True) }}
+                        {% if form.username.errors %}
+                            <div class="invalid-feedback d-block">
+                                {% for error in form.username.errors %}{{ error }}{% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+
+                    <div class="mb-4">
+                        <label for="email" class="form-label">Email Address</label>
+                        {{ form.email(class="form-control form-control-lg", placeholder="name@example.com", required=True) }}
+                        {% if form.email.errors %}
+                            <div class="invalid-feedback d-block">
+                                {% for error in form.email.errors %}{{ error }}{% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-4">
+                            <label for="password" class="form-label">Password</label>
+                            <div class="input-group">
+                                {{ form.password(class="form-control form-control-lg", required=True) }}
+                                <button class="btn btn-outline-secondary" type="button" id="togglePassword">
+                                    <i class="bi bi-eye"></i>
+                                </button>
+                            </div>
+                            <div class="form-text">
+                                At least 6 characters
+                            </div>
+                            {% if form.password.errors %}
+                                <div class="invalid-feedback d-block">
+                                    {% for error in form.password.errors %}{{ error }}{% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-6 mb-4">
+                            <label for="password_confirm" class="form-label">Confirm Password</label>
+                            {{ form.password_confirm(class="form-control form-control-lg", required=True) }}
+                            {% if form.password_confirm.errors %}
+                                <div class="invalid-feedback d-block">
+                                    {% for error in form.password_confirm.errors %}{{ error }}{% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <div class="mb-4">
+                        <div class="form-check">
+                            {{ form.submit(class="form-check-input") }} <!-- Terms checkbox if needed -->
+                            <label class="form-check-label">
+                                I agree to the <a href="#">Terms of Service</a> and <a href="#">Privacy Policy</a>
+                            </label>
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary btn-lg w-100 mb-3">
+                        <i class="bi bi-person-plus me-2"></i>Create Account
+                    </button>
+                </form>
+
+                <div class="text-center">
+                    <p class="text-muted mb-0">
+                        Already have an account? <a href="{{ url_for('auth.login') }}">Sign in here</a>
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Features Teaser -->
+        <div class="row mt-4 text-center">
+            <div class="col-4">
+                <div class="feature-icon mb-2">
+                    <i class="bi bi-graph-up fs-3 text-primary"></i>
+                </div>
+                <small>Smart Analytics</small>
+            </div>
+            <div class="col-4">
+                <div class="feature-icon mb-2">
+                    <i class="bi bi-credit-card fs-3 text-success"></i>
+                </div>
+                <small>Easy Tracking</small>
+            </div>
+            <div class="col-4">
+                <div class="feature-icon mb-2">
+                    <i class="bi bi-shield-check fs-3 text-info"></i>
+                </div>
+                <small>Fully Secure</small>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Password toggle
+    document.getElementById('togglePassword').addEventListener('click', function() {
+        const password = document.querySelector('input[name="password"]');
+        const icon = this.querySelector('i');
+        password.type = password.type === 'password' ? 'text' : 'password';
+        icon.classList.toggle('bi-eye');
+        icon.classList.toggle('bi-eye-slash');
+    });
+
+    // Real-time password match check
+    document.querySelector('input[name="password"]').addEventListener('input', checkPasswordMatch);
+    document.querySelector('input[name="password_confirm"]').addEventListener('input', checkPasswordMatch);
+
+    function checkPasswordMatch() {
+        const pass1 = document.querySelector('input[name="password"]').value;
+        const pass2 = document.querySelector('input[name="password_confirm"]').value;
+        const confirmField = document.querySelector('input[name="password_confirm"]');
+        
+        if (pass1 && pass2 && pass1 !== pass2) {
+            confirmField.classList.add('is-invalid');
+            confirmField.classList.remove('is-valid');
+        } else if (pass2) {
+            confirmField.classList.remove('is-invalid');
+            confirmField.classList.add('is-valid');
+        }
+    }
+</script>
+{% endblock %}

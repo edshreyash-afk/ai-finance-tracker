@@ -1,0 +1,393 @@
+{% extends 'base.html' %}
+
+{% block title %}Transactions - AI Finance Tracker{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2>Transactions</h2>
+    <div class="d-flex gap-2">
+        <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#addTransactionModal">
+            <i class="bi bi-plus-circle me-2"></i>Add Transaction
+        </button>
+        <button class="btn btn-outline-secondary" id="exportCSV">
+            <i class="bi bi-download me-2"></i>Export CSV
+        </button>
+        <button class="btn btn-outline-danger" id="deleteSelected" disabled>
+            <i class="bi bi-trash me-2"></i>Delete Selected
+        </button>
+    </div>
+</div>
+
+<!-- Filters & Search -->
+<div class="card mb-4">
+    <div class="card-body">
+        <div class="row g-3">
+            <div class="col-md-3">
+                <input type="text" class="form-control" id="searchInput" placeholder="Search description...">
+            </div>
+            <div class="col-md-2">
+                <select class="form-select" id="categoryFilter">
+                    <option value="">All Categories</option>
+                    {% for cat in categories %}
+                    <option value="{{ cat }}">{{ cat }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-2">
+                <select class="form-select" id="typeFilter">
+                    <option value="">All Types</option>
+                    <option value="income">Income</option>
+                    <option value="expense">Expense</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <input type="date" class="form-control" id="dateFilter">
+            </div>
+            <div class="col-md-3">
+                <div class="d-flex gap-2">
+                    <button class="btn btn-outline-secondary" id="clearFilters">Clear</button>
+                    <button class="btn btn-primary" id="applyFilters">Apply Filters</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Totals & Summary -->
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card bg-success text-white">
+            <div class="card-body text-center">
+                <h5>Total Income</h5>
+                <h3>₹{{ "%.2f"|format(summary.income|default(0)) }}</h3>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-danger text-white">
+            <div class="card-body text-center">
+                <h5>Total Expenses</h5>
+                <h3>₹{{ "%.2f"|format(summary.expenses|default(0)) }}</h3>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-primary text-white">
+            <div class="card-body text-center">
+                <h5>Net Balance</h5>
+                <h3>₹{{ "%.2f"|format(summary.balance|default(0)) }}</h3>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-info text-white">
+            <div class="card-body text-center">
+                <h5>Total Records</h5>
+                <h3>{{ transactions|length|default(0) }}</h3>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Transactions Table -->
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <span>Found {{ filtered_transactions|length|default(0) }} transactions</span>
+        {% if transactions|length > per_page %}
+        <div class="d-flex gap-2">
+            {{ pagination_links }}
+        </div>
+        {% endif %}
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead class="table-dark sticky-top">
+                    <tr>
+                        <th><input type="checkbox" id="selectAll"></th>
+                        <th>Date <i class="bi bi-arrow-up-down"></i></th>
+                        <th>Description</th>
+                        <th>Category</th>
+                        <th>Amount</th>
+                        <th>Type</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for trans in filtered_transactions|default(transactions) %}
+                    <tr>
+                        <td><input type="checkbox" class="transaction-checkbox" value="{{ trans.id }}"></td>
+                        <td>{{ trans.date.strftime('%Y-%m-%d') }}</td>
+                        <td>{{ trans.description or '-' }}</td>
+                        <td><span class="badge bg-secondary">{{ trans.category or 'Uncategorized' }}</span></td>
+                        <td class="{{ 'text-success fw-bold' if trans.amount > 0 else 'text-danger fw-bold' }}">
+                            ₹{{ "%.2f"|format(trans.amount) }}
+                        </td>
+                        <td>
+                            <span class="badge {{ 'bg-success' if trans.amount > 0 else 'bg-danger' }}">
+                                {{ 'Income' if trans.amount > 0 else 'Expense' }}
+                            </span>
+                        </td>
+                        <td>
+                            <button class="btn btn-sm btn-outline-primary edit-btn" data-id="{{ trans.id }}"
+                                data-desc="{{ trans.description }}" data-cat="{{ trans.category }}"
+                                data-amount="{{ trans.amount }}" data-date="{{ trans.date.strftime('%Y-%m-%d') }}">
+                                <i class="bi bi-pencil"></i>
+                            </button>
+                            <button class="btn btn-sm btn-outline-danger delete-btn" data-id="{{ trans.id }}">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="7" class="text-center py-4 text-muted">
+                            <i class="bi bi-inbox fs-1 mb-3"></i>
+                            No transactions found. <a href="#" data-bs-toggle="modal" data-bs-target="#addTransactionModal">Add your first one!</a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Add/Edit Transaction Modal -->
+<div class="modal fade" id="addTransactionModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <form id="transactionForm" method="POST">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="modalTitle">Add Transaction</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" name="id" id="transId">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Date</label>
+                            <input type="date" class="form-control" name="date" id="transDate" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Amount</label>
+                            <input type="number" step="0.01" class="form-control" name="amount" id="transAmount" required>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Description</label>
+                        <input type="text" class="form-control" name="description" id="transDesc" placeholder="What was this for?">
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Category</label>
+                            <select class="form-select" name="category" id="transCategory">
+                                <option value="">Uncategorized</option>
+                                {% for cat in categories %}
+                                <option value="{{ cat }}">{{ cat }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Type</label>
+                            <select class="form-select" name="type" id="transType" required>
+                                <option value="expense">Expense</option>
+                                <option value="income">Income</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save Transaction</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div class="modal fade" id="deleteModal">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Confirm Delete</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to delete <strong id="deleteItemName"></strong>?</p>
+                <p class="text-danger"><small>This action cannot be undone.</small></p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <input type="hidden" id="deleteTransId">
+                <button type="button" class="btn btn-danger" id="confirmDelete">Delete</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    
+    // --- 1. Client-Side Filtering & Search ---
+    const searchInput = document.getElementById('searchInput');
+    const categoryFilter = document.getElementById('categoryFilter');
+    const typeFilter = document.getElementById('typeFilter');
+    const dateFilter = document.getElementById('dateFilter');
+    const applyBtn = document.getElementById('applyFilters');
+    const clearBtn = document.getElementById('clearFilters');
+    const tableRows = document.querySelectorAll('tbody tr');
+
+    function filterTable() {
+        const searchTerm = searchInput.value.toLowerCase();
+        const catValue = categoryFilter.value.toLowerCase();
+        const typeValue = typeFilter.value.toLowerCase();
+        const dateValue = dateFilter.value;
+        
+        let visibleCount = 0;
+
+        tableRows.forEach(row => {
+            // Skip the "No transactions found" row if it exists
+            if(row.cells.length < 7) return; 
+
+            const date = row.cells[1].textContent.trim();
+            const desc = row.cells[2].textContent.toLowerCase();
+            const cat = row.cells[3].textContent.toLowerCase().trim();
+            const type = row.cells[5].textContent.toLowerCase().trim();
+
+            const matchSearch = desc.includes(searchTerm);
+            const matchCat = catValue === "" || cat === catValue;
+            const matchType = typeValue === "" || type === typeValue;
+            const matchDate = dateValue === "" || date === dateValue;
+
+            if (matchSearch && matchCat && matchType && matchDate) {
+                row.style.display = '';
+                visibleCount++;
+            } else {
+                row.style.display = 'none';
+            }
+        });
+    }
+
+    // Bind filter events
+    applyBtn.addEventListener('click', filterTable);
+    searchInput.addEventListener('input', filterTable); // Real-time search
+    
+    clearBtn.addEventListener('click', () => {
+        searchInput.value = '';
+        categoryFilter.value = '';
+        typeFilter.value = '';
+        dateFilter.value = '';
+        filterTable();
+    });
+
+    // --- 2. Edit Transaction Modal Prep ---
+    const addTransactionModal = document.getElementById('addTransactionModal');
+    const transactionForm = document.getElementById('transactionForm');
+    const modalTitle = document.getElementById('modalTitle');
+    
+    // Reset form when opening to ADD a new transaction
+    addTransactionModal.addEventListener('hidden.bs.modal', () => {
+        transactionForm.reset();
+        document.getElementById('transId').value = '';
+        modalTitle.textContent = 'Add Transaction';
+        transactionForm.action = "{{ url_for('transaction.add_transaction') }}";
+    });
+
+    // Populate form when clicking EDIT
+    document.querySelectorAll('.edit-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            modalTitle.textContent = 'Edit Transaction';
+            
+            const id = this.getAttribute('data-id');
+            document.getElementById('transId').value = id;
+            document.getElementById('transDate').value = this.getAttribute('data-date');
+            document.getElementById('transAmount').value = Math.abs(parseFloat(this.getAttribute('data-amount')));
+            document.getElementById('transDesc').value = this.getAttribute('data-desc') === 'None' ? '' : this.getAttribute('data-desc');
+            
+            const cat = this.getAttribute('data-cat');
+            document.getElementById('transCategory').value = cat === 'None' ? '' : cat;
+            
+            // Set action to the edit route
+            transactionForm.action = `/transaction/edit/₹{id}`;
+            
+            // Determine type based on amount
+            const amount = parseFloat(this.getAttribute('data-amount'));
+            document.getElementById('transType').value = amount > 0 ? 'income' : 'expense';
+
+            // Show modal
+            new bootstrap.Modal(addTransactionModal).show();
+        });
+    });
+
+    // --- 3. Delete Transaction (Single) ---
+    const deleteModal = new bootstrap.Modal(document.getElementById('deleteModal'));
+    const confirmDeleteBtn = document.getElementById('confirmDelete');
+    
+    document.querySelectorAll('.delete-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const id = this.getAttribute('data-id');
+            const desc = this.closest('tr').cells[2].textContent;
+            
+            document.getElementById('deleteTransId').value = id;
+            document.getElementById('deleteItemName').textContent = desc || 'this transaction';
+            deleteModal.show();
+        });
+    });
+
+    confirmDeleteBtn.addEventListener('click', function() {
+        const id = document.getElementById('deleteTransId').value;
+        const btnOriginalText = this.innerHTML;
+        this.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Deleting...';
+        
+        axios.delete(`/transaction/delete/${id}`)
+            .then(response => {
+                if(response.data.success) {
+                    location.reload(); // Reload to update totals/charts accurately
+                }
+            })
+            .catch(error => {
+                console.error('Error deleting transaction:', error);
+                alert('Failed to delete transaction.');
+                this.innerHTML = btnOriginalText;
+            });
+    });
+
+    // --- 4. Bulk Delete Logic ---
+    const selectAllCb = document.getElementById('selectAll');
+    const rowCbs = document.querySelectorAll('.transaction-checkbox');
+    const deleteSelectedBtn = document.getElementById('deleteSelected');
+
+    function updateBulkDeleteBtn() {
+        const checkedCount = document.querySelectorAll('.transaction-checkbox:checked').length;
+        deleteSelectedBtn.disabled = checkedCount === 0;
+        deleteSelectedBtn.innerHTML = checkedCount > 0 ? `<i class="bi bi-trash me-2"></i>Delete (₹{checkedCount})` : `<i class="bi bi-trash me-2"></i>Delete Selected`;
+    }
+
+    if(selectAllCb) {
+        selectAllCb.addEventListener('change', (e) => {
+            rowCbs.forEach(cb => cb.checked = e.target.checked);
+            updateBulkDeleteBtn();
+        });
+
+        rowCbs.forEach(cb => {
+            cb.addEventListener('change', updateBulkDeleteBtn);
+        });
+
+        deleteSelectedBtn.addEventListener('click', () => {
+            const checkedIds = Array.from(document.querySelectorAll('.transaction-checkbox:checked')).map(cb => cb.value);
+            if(confirm(`Are you sure you want to delete ₹{checkedIds.length} transactions?`)) {
+                // Execute multiple deletes concurrently
+                Promise.all(checkedIds.map(id => axios.delete(`/transaction/delete/${id}`)))
+                    .then(() => location.reload())
+                    .catch(() => alert('Error deleting some transactions.'));
+            }
+        });
+    }
+});
+</script>
+{% endblock %}
