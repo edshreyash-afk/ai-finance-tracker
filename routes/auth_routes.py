@@ -43,23 +43,6 @@ class RegisterForm(FlaskForm):
     ])
     submit = SubmitField('Create Account')
 
-# Rate limiting decorator (simple)
-from collections import defaultdict
-login_attempts = defaultdict(list)
-
-def rate_limit(f):
-    @wraps(f)
-    def decorated_function(*args, **kwargs):
-        ip = request.remote_addr
-        now = time.time()  
-        attempts = login_attempts[ip]
-        attempts[:] = [t for t in attempts if now - t < 900]  # 15 min window
-        if len(attempts) > 5:
-            flash('Too many login attempts. Try again in 15 minutes.', 'error')
-            return render_template('login.html', form=LoginForm())
-        attempts.append(now)
-        return f(*args, **kwargs)
-    return decorated_function
 
 @auth.route("/register", methods=["GET", "POST"])
 def register():
@@ -87,7 +70,6 @@ def register():
     return render_template("register.html", form=form)
 
 @auth.route("/login", methods=["GET", "POST"])
-@rate_limit
 def login():
     if current_user.is_authenticated:
         return redirect(url_for('dashboard.index'))

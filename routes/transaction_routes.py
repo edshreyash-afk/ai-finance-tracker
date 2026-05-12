@@ -4,6 +4,7 @@ from flask_login import login_required, current_user
 from datetime import datetime
 from flask import jsonify
 import csv
+from ai.gemini_service import parse_natural_language_transaction
 
 transaction = Blueprint("transaction", __name__, url_prefix="/transaction")
 
@@ -111,3 +112,17 @@ def edit_transaction(id):
     db.session.commit()
     flash("Transaction updated successfully!", "success")
     return redirect(url_for("transaction.view_transactions"))
+
+@transaction.route("/api/parse", methods=["POST"])
+@login_required
+def parse_transaction():
+    data = request.get_json()
+    if not data or 'text' not in data:
+        return jsonify({"success": False, "message": "No text provided"}), 400
+        
+    text = data['text']
+    try:
+        parsed_data = parse_natural_language_transaction(text)
+        return jsonify({"success": True, "data": parsed_data})
+    except Exception as e:
+        return jsonify({"success": False, "message": str(e)}), 500

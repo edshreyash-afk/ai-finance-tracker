@@ -117,6 +117,23 @@
                 </div>
                 <div class="modal-body">
                     {{ form.hidden_tag() if form else '' }}
+                    
+                    <!-- AI Smart Entry Section -->
+                    <div class="card bg-light mb-4 border-primary">
+                        <div class="card-body">
+                            <label class="form-label fw-bold text-primary"><i class="bi bi-stars"></i> AI Smart Entry</label>
+                            <div class="input-group">
+                                <input type="text" class="form-control" id="aiInputText" placeholder="e.g., Spent ₹450 on pizza yesterday">
+                                <button class="btn btn-primary" type="button" id="btnAiParse">
+                                    <span id="aiParseText">✨ Auto-Fill</span>
+                                    <span id="aiParseSpinner" class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span>
+                                </button>
+                            </div>
+                            <small class="text-muted mt-1 d-block" id="aiStatusMessage">Describe your transaction naturally.</small>
+                        </div>
+                    </div>
+                    <hr>
+                    
                     <div class="mb-3">
                         <label class="form-label">Description</label>
                         <input type="text" class="form-control" name="description" placeholder="e.g., Grocery shopping" required>
@@ -179,6 +196,83 @@ if (lineData) {
         '<p class="text-muted text-center py-5 m-0">No trend data yet.</p>';
 }
 
+document.addEventListener('DOMContentLoaded', function() {
+    const btnAiParse = document.getElementById('btnAiParse');
+    if (btnAiParse) {
+        btnAiParse.addEventListener('click', async function() {
+            const aiInputText = document.getElementById('aiInputText').value;
+            if (!aiInputText) return;
+            
+            const btnText = document.getElementById('aiParseText');
+            const btnSpinner = document.getElementById('aiParseSpinner');
+            const statusMsg = document.getElementById('aiStatusMessage');
+            
+            // UI Loading state
+            btnAiParse.disabled = true;
+            btnText.classList.add('d-none');
+            btnSpinner.classList.remove('d-none');
+            statusMsg.textContent = "Analyzing...";
+            statusMsg.className = "text-info mt-1 d-block";
+            
+            try {
+                const response = await fetch('{{ url_for("transaction.parse_transaction") }}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ text: aiInputText })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success && result.data) {
+                    const data = result.data;
+                    
+                    // Populate form fields
+                    if (data.amount) document.querySelector('input[name="amount"]').value = data.amount;
+                    if (data.description) document.querySelector('input[name="description"]').value = data.description;
+                    
+                    // Handle type radio buttons
+                    if (data.type) {
+                        if (data.type.toLowerCase() === 'income') {
+                            document.getElementById('income').checked = true;
+                        } else {
+                            document.getElementById('expense').checked = true;
+                        }
+                    }
+                    
+                    // Handle category select
+                    if (data.category) {
+                        const categorySelect = document.querySelector('select[name="category"]');
+                        const categoryFormatted = data.category.charAt(0).toUpperCase() + data.category.slice(1).toLowerCase();
+                        
+                        let optionExists = Array.from(categorySelect.options).some(opt => opt.value === categoryFormatted);
+                        if (!optionExists) {
+                            categorySelect.value = "Other";
+                        } else {
+                            categorySelect.value = categoryFormatted;
+                        }
+                    }
+                    
+                    statusMsg.textContent = "Successfully auto-filled!";
+                    statusMsg.className = "text-success mt-1 d-block";
+                } else {
+                    statusMsg.textContent = result.message || "Could not parse. Please fill manually.";
+                    statusMsg.className = "text-danger mt-1 d-block";
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                statusMsg.textContent = "An error occurred connecting to AI service.";
+                statusMsg.className = "text-danger mt-1 d-block";
+            } finally {
+                // Restore UI
+                btnAiParse.disabled = false;
+                btnText.classList.remove('d-none');
+                btnSpinner.classList.add('d-none');
+            }
+        });
+    }
+});
 </script>
 {% endblock %}
 

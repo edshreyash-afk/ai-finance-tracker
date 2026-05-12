@@ -7,3 +7,4 @@ class Config:
     SECRET_KEY = os.getenv("SECRET_KEY", "default-dev-key")
     SQLALCHEMY_DATABASE_URI = os.getenv("DATABASE_URL", "sqlite:///fallback.db")
     SQLALCHEMY_TRACK_MODIFICATIONS = False
+    GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
