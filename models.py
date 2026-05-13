@@ -25,5 +25,5 @@ class Transaction(db.Model):
     description = db.Column(db.String(200))
     category = db.Column(db.String(50))
     type = db.Column(db.String(10))  # income or expense
-    date = db.Column(db.Date, default=datetime.utcnow)
+    date = db.Column(db.DateTime, default=datetime.utcnow)
     

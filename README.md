@@ -7,10 +7,10 @@ A smart, web-based personal finance application built with Python and Flask. Thi
 - **User Authentication:** Secure registration and login system.
 - **Transaction Management:** Add, edit, and delete income and expenses easily.
 - **Dashboard Overview:** Get a quick glance at your total balance, monthly income, and expenses.
-- **Smart Insights:** Data-driven analysis of your spending patterns, including:
-  - Savings rate calculation
-  - High-spending category alerts
-  - Personalized budgeting tips and health score
+- **AI-Powered Insights:** Conversational, personalized financial advice driven by the Google Gemini API, including:
+  - Context-aware spending behavior analysis
+  - Actionable savings recommendations
+  - Dynamic financial health evaluation
 - **Data Export:** Export your transaction history to CSV for external use.
 - **Responsive UI:** Clean and modern interface built with Bootstrap 5.
 
@@ -18,7 +18,7 @@ A smart, web-based personal finance application built with Python and Flask. Thi
 
 - **Backend:** Python, Flask
 - **Database:** SQLAlchemy (SQLite by default, configurable via environment variables)
-- **Data Analysis:** Pandas, NumPy
+- **AI Engine:** Google Gemini API (google-generativeai)
 - **Frontend:** HTML5, CSS3, Bootstrap 5, Jinja2 Templates
 
 ## 🚀 Getting Started
@@ -63,6 +63,7 @@ Follow these steps to set up the project locally on your machine.
    ```env
    SECRET_KEY=your_super_secret_key_here
    DATABASE_URL=sqlite:///finance.db
+   GEMINI_API_KEY=your_gemini_api_key_here
    ```
    *(Note: The `DATABASE_URL` is optional. If not provided, it will fallback to a default SQLite database.)*
 

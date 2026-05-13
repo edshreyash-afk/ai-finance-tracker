@@ -80,15 +80,15 @@
                 <tbody>
                     {% for trans in transactions %}
                     <tr>
-                        <td>{{ trans.date.strftime('%Y-%m-%d') }}</td>
+                        <td>{{ trans.date.strftime('%Y-%m-%d %I:%M %p') }}</td>
                         <td>{{ trans.description or 'N/A' }}</td>
-                        <td class="{{ 'text-success fw-bold' if trans.amount > 0 else 'text-danger fw-bold' }}">
+                        <td class="{{ 'text-success fw-bold' if trans.type == 'income' else 'text-danger fw-bold' }}">
                             ₹{{ "%.2f"|format(trans.amount) }}
                         </td>
                         <td>{{ trans.category or 'Uncategorized' }}</td>
                         <td>
-                            <span class="badge {{ 'bg-success' if trans.amount > 0 else 'bg-danger' }}">
-                                {{ 'Income' if trans.amount > 0 else 'Expense' }}
+                            <span class="badge {{ 'bg-success' if trans.type == 'income' else 'bg-danger' }}">
+                                {{ trans.type | capitalize }}
                             </span>
                         </td>
                     </tr>
@@ -135,6 +135,10 @@
                     <hr>
                     
                     <div class="mb-3">
+                        <label class="form-label">Date & Time</label>
+                        <input type="datetime-local" class="form-control" name="date" required>
+                    </div>
+                    <div class="mb-3">
                         <label class="form-label">Description</label>
                         <input type="text" class="form-control" name="description" placeholder="e.g., Grocery shopping" required>
                     </div>
@@ -146,10 +150,18 @@
                         <label class="form-label">Category</label>
                         <select class="form-select" name="category">
                             <option value="">Select Category</option>
-                            <option value="Food">Food</option>
+                            <option value="Food & Dining">Food & Dining</option>
+                            <option value="Groceries">Groceries</option>
                             <option value="Transport">Transport</option>
+                            <option value="Housing">Housing</option>
+                            <option value="Utilities">Utilities</option>
+                            <option value="Healthcare">Healthcare</option>
                             <option value="Entertainment">Entertainment</option>
+                            <option value="Shopping">Shopping</option>
+                            <option value="Education">Education</option>
                             <option value="Salary">Salary</option>
+                            <option value="Freelance">Freelance</option>
+                            <option value="Investment">Investment</option>
                             <option value="Other">Other</option>
                         </select>
                     </div>
@@ -198,7 +210,16 @@ if (lineData) {
 
 document.addEventListener('DOMContentLoaded', function() {
     const btnAiParse = document.getElementById('btnAiParse');
-    if (btnAiParse) {
+    const aiInputText = document.getElementById('aiInputText');
+    
+    if (btnAiParse && aiInputText) {
+        aiInputText.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                btnAiParse.click();
+            }
+        });
+        
         btnAiParse.addEventListener('click', async function() {
             const aiInputText = document.getElementById('aiInputText').value;
             if (!aiInputText) return;
@@ -231,6 +252,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     // Populate form fields
                     if (data.amount) document.querySelector('input[name="amount"]').value = data.amount;
                     if (data.description) document.querySelector('input[name="description"]').value = data.description;
+                    if (data.date) document.querySelector('input[name="date"]').value = data.date;
                     
                     // Handle type radio buttons
                     if (data.type) {

@@ -18,13 +18,22 @@ def add_transaction():
         type_ = request.form.get("type")  # renamed to avoid keyword conflict
         description = request.form.get("description", "")
 
+        date_str = request.form.get("date")
+        if date_str:
+            try:
+                trans_date = datetime.strptime(date_str, '%Y-%m-%dT%H:%M')
+            except ValueError:
+                trans_date = datetime.utcnow()
+        else:
+            trans_date = datetime.utcnow()
+
         new_transaction = Transaction(
             user_id=current_user.id,
             amount=amount,
             category=category,
             description=description,
             type=type_,  # income or expense
-            date=datetime.utcnow()
+            date=trans_date
         )
 
         db.session.add(new_transaction)
@@ -107,7 +116,10 @@ def edit_transaction(id):
     # Handle date parsing
     date_str = request.form.get("date")
     if date_str:
-        trans.date = datetime.strptime(date_str, '%Y-%m-%d').date()
+        try:
+            trans.date = datetime.strptime(date_str, '%Y-%m-%dT%H:%M')
+        except ValueError:
+            pass
 
     db.session.commit()
     flash("Transaction updated successfully!", "success")

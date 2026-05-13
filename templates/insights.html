@@ -85,21 +85,63 @@
     </div>
 </div>
 
-<!-- AI Advice Section -->
-<div class="card mt-4">
-    <div class="card-header bg-gradient text-white">
-        <h5><i class="bi bi-robot me-2"></i>AI Financial Advice</h5>
+<!-- AI Conversational Insights Engine -->
+<div class="card mt-4 shadow-sm border-0">
+    <div class="card-header text-white" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+        <h5 class="mb-0"><i class="bi bi-robot me-2"></i>AI Financial Advisor</h5>
     </div>
     <div class="card-body">
-        <div class="alert alert-info">
-            <h6>{{ advice.title|default('Smart Spending Tips') }}</h6>
-            <p>{{ advice.message|default('Your top spending category is taking 40% of expenses. Consider setting a monthly limit to improve savings rate.') }}</p>
-            <ul class="mb-0">
-                {% for tip in advice.tips|default(['Track daily spends', 'Review subscriptions', 'Set savings goals']) %}
-                <li>✅ {{ tip }}</li>
-                {% endfor %}
-            </ul>
+        <p class="text-muted">Ask your AI advisor a specific question, or just click generate to get a full analysis of your current spending habits, anomalies, and savings tips!</p>
+        
+        <div class="input-group mb-3">
+            <span class="input-group-text bg-light"><i class="bi bi-chat-dots"></i></span>
+            <input type="text" id="aiQuestionInput" class="form-control" placeholder="E.g., Can I afford to buy a new laptop next month based on my trends?">
+            <button class="btn btn-primary px-4" id="btnGenerateInsights">
+                <i class="bi bi-magic me-1"></i> <span id="btnGenerateText">Generate Analysis</span>
+            </button>
         </div>
+        
+        <!-- Loading Spinner -->
+        <div id="aiLoadingSpinner" class="text-center py-4" style="display: none;">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <p class="text-muted mt-2 mb-0">Analyzing your financial data...</p>
+        </div>
+        
+        <!-- Results Container -->
+        <div id="aiResultsContainer" style="display: none;">
+            
+            <div id="aiAnswerSection" class="alert alert-secondary border-0 mb-4" style="display: none;">
+                <h6><i class="bi bi-chat-quote text-primary me-2"></i>Answer to your question</h6>
+                <p id="aiAnswerText" class="mb-0"></p>
+            </div>
+            
+            <div class="row">
+                <div class="col-md-7 mb-3">
+                    <h6 class="text-primary border-bottom pb-2"><i class="bi bi-heart-pulse me-2"></i>Financial Health Summary</h6>
+                    <p id="aiHealthSummary" class="text-dark"></p>
+                </div>
+                <div class="col-md-5 mb-3">
+                    <h6 class="text-danger border-bottom pb-2"><i class="bi bi-exclamation-triangle me-2"></i>Detected Anomalies</h6>
+                    <ul id="aiAnomaliesList" class="ps-3 mb-0"></ul>
+                </div>
+            </div>
+            
+            <div class="mt-2 p-3 bg-light rounded">
+                <h6 class="text-success mb-3"><i class="bi bi-lightbulb me-2"></i>Actionable Recommendations</h6>
+                <div class="row" id="aiRecommendationsList">
+                    <!-- Cards will be injected here -->
+                </div>
+            </div>
+            
+        </div>
+        
+        <!-- Error Container -->
+        <div id="aiErrorContainer" class="alert alert-danger mb-0" style="display: none;">
+            <i class="bi bi-exclamation-octagon me-2"></i><span id="aiErrorText">An error occurred.</span>
+        </div>
+        
     </div>
 </div>
 
@@ -154,5 +196,115 @@
     {% if category_graph %}
     renderChart({{ category_graph|tojson|safe }}, 'categoryChart');
     {% endif %}
+
+    document.addEventListener('DOMContentLoaded', function() {
+        const btnGenerate = document.getElementById('btnGenerateInsights');
+        const aiQuestionInput = document.getElementById('aiQuestionInput');
+        
+        if (btnGenerate) {
+            
+            // Allow triggering via Enter key
+            if (aiQuestionInput) {
+                aiQuestionInput.addEventListener('keypress', function(e) {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        btnGenerate.click();
+                    }
+                });
+            }
+            
+            btnGenerate.addEventListener('click', async function() {
+                const spinner = document.getElementById('aiLoadingSpinner');
+                const resultsContainer = document.getElementById('aiResultsContainer');
+                const errorContainer = document.getElementById('aiErrorContainer');
+                const btnText = document.getElementById('btnGenerateText');
+                
+                // Reset UI
+                spinner.style.display = 'block';
+                resultsContainer.style.display = 'none';
+                errorContainer.style.display = 'none';
+                btnGenerate.disabled = true;
+                btnText.textContent = 'Analyzing...';
+                
+                const question = aiQuestionInput ? aiQuestionInput.value : '';
+                
+                try {
+                    const response = await fetch('{{ url_for("insights.analyze_finances") }}', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({ question: question })
+                    });
+                    
+                    const result = await response.json();
+                    
+                    if (result.success && result.data) {
+                        const data = result.data;
+                        
+                        // Populate Health Summary
+                        document.getElementById('aiHealthSummary').textContent = data.health_summary || 'No summary available.';
+                        
+                        // Populate Anomalies
+                        const anomaliesList = document.getElementById('aiAnomaliesList');
+                        anomaliesList.innerHTML = '';
+                        if (data.anomalies && data.anomalies.length > 0) {
+                            data.anomalies.forEach(anomaly => {
+                                const li = document.createElement('li');
+                                li.textContent = anomaly;
+                                anomaliesList.appendChild(li);
+                            });
+                        } else {
+                            anomaliesList.innerHTML = '<li class="text-muted">No unusual spending detected.</li>';
+                        }
+                        
+                        // Populate Recommendations
+                        const recList = document.getElementById('aiRecommendationsList');
+                        recList.innerHTML = '';
+                        if (data.recommendations && data.recommendations.length > 0) {
+                            data.recommendations.forEach((rec, index) => {
+                                const col = document.createElement('div');
+                                col.className = 'col-md-4 mb-2';
+                                col.innerHTML = `
+                                    <div class="card h-100 border-success shadow-sm">
+                                        <div class="card-body p-2">
+                                            <div class="d-flex align-items-center mb-1">
+                                                <span class="badge bg-success rounded-circle me-2">${index + 1}</span>
+                                                <strong class="text-success" style="font-size: 0.9rem;">Tip</strong>
+                                            </div>
+                                            <p class="mb-0 small">${rec}</p>
+                                        </div>
+                                    </div>
+                                `;
+                                recList.appendChild(col);
+                            });
+                        }
+                        
+                        // Handle custom question answer
+                        const answerSection = document.getElementById('aiAnswerSection');
+                        if (data.answer && data.answer !== 'null' && question.trim() !== '') {
+                            document.getElementById('aiAnswerText').textContent = data.answer;
+                            answerSection.style.display = 'block';
+                        } else {
+                            answerSection.style.display = 'none';
+                        }
+                        
+                        spinner.style.display = 'none';
+                        resultsContainer.style.display = 'block';
+                    } else {
+                        throw new Error(result.message || 'Failed to generate insights');
+                    }
+                    
+                } catch (error) {
+                    spinner.style.display = 'none';
+                    errorContainer.style.display = 'block';
+                    document.getElementById('aiErrorText').textContent = error.message;
+                } finally {
+                    btnGenerate.disabled = false;
+                    btnText.textContent = 'Generate Analysis';
+                }
+            });
+        }
+    });
 </script>
 {% endblock %}

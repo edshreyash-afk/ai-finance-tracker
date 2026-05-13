@@ -117,21 +117,21 @@
                     {% for trans in filtered_transactions|default(transactions) %}
                     <tr>
                         <td><input type="checkbox" class="transaction-checkbox" value="{{ trans.id }}"></td>
-                        <td>{{ trans.date.strftime('%Y-%m-%d') }}</td>
+                        <td>{{ trans.date.strftime('%Y-%m-%d %I:%M %p') }}</td>
                         <td>{{ trans.description or '-' }}</td>
                         <td><span class="badge bg-secondary">{{ trans.category or 'Uncategorized' }}</span></td>
-                        <td class="{{ 'text-success fw-bold' if trans.amount > 0 else 'text-danger fw-bold' }}">
+                        <td class="{{ 'text-success fw-bold' if trans.type == 'income' else 'text-danger fw-bold' }}">
                             ₹{{ "%.2f"|format(trans.amount) }}
                         </td>
                         <td>
-                            <span class="badge {{ 'bg-success' if trans.amount > 0 else 'bg-danger' }}">
-                                {{ 'Income' if trans.amount > 0 else 'Expense' }}
+                            <span class="badge {{ 'bg-success' if trans.type == 'income' else 'bg-danger' }}">
+                                {{ trans.type | capitalize }}
                             </span>
                         </td>
                         <td>
                             <button class="btn btn-sm btn-outline-primary edit-btn" data-id="{{ trans.id }}"
                                 data-desc="{{ trans.description }}" data-cat="{{ trans.category }}"
-                                data-amount="{{ trans.amount }}" data-date="{{ trans.date.strftime('%Y-%m-%d') }}">
+                                data-amount="{{ trans.amount }}" data-date="{{ trans.date.strftime('%Y-%m-%dT%H:%M') }}" data-type="{{ trans.type }}">
                                 <i class="bi bi-pencil"></i>
                             </button>
                             <button class="btn btn-sm btn-outline-danger delete-btn" data-id="{{ trans.id }}">
@@ -157,17 +157,34 @@
 <div class="modal fade" id="addTransactionModal" tabindex="-1">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
-            <form id="transactionForm" method="POST">
+            <form id="transactionForm" method="POST" action="{{ url_for('transaction.add_transaction') }}">
                 <div class="modal-header">
                     <h5 class="modal-title" id="modalTitle">Add Transaction</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
                     <input type="hidden" name="id" id="transId">
+                    
+                    <!-- AI Smart Entry Section -->
+                    <div class="card bg-light mb-4 border-primary" id="aiEntrySection">
+                        <div class="card-body">
+                            <label class="form-label fw-bold text-primary"><i class="bi bi-stars"></i> AI Smart Entry</label>
+                            <div class="input-group">
+                                <input type="text" class="form-control" id="aiInputText" placeholder="e.g., Spent ₹450 on pizza yesterday">
+                                <button class="btn btn-primary" type="button" id="btnAiParse">
+                                    <span id="aiParseText">✨ Auto-Fill</span>
+                                    <span id="aiParseSpinner" class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span>
+                                </button>
+                            </div>
+                            <small class="text-muted mt-1 d-block" id="aiStatusMessage">Describe your transaction naturally.</small>
+                        </div>
+                    </div>
+                    <hr id="aiEntryDivider">
+                    
                     <div class="row">
                         <div class="col-md-6 mb-3">
-                            <label class="form-label">Date</label>
-                            <input type="date" class="form-control" name="date" id="transDate" required>
+                            <label class="form-label">Date & Time</label>
+                            <input type="datetime-local" class="form-control" name="date" id="transDate" required>
                         </div>
                         <div class="col-md-6 mb-3">
                             <label class="form-label">Amount</label>
@@ -182,10 +199,20 @@
                         <div class="col-md-6 mb-3">
                             <label class="form-label">Category</label>
                             <select class="form-select" name="category" id="transCategory">
-                                <option value="">Uncategorized</option>
-                                {% for cat in categories %}
-                                <option value="{{ cat }}">{{ cat }}</option>
-                                {% endfor %}
+                                <option value="">Select Category</option>
+                                <option value="Food & Dining">Food & Dining</option>
+                                <option value="Groceries">Groceries</option>
+                                <option value="Transport">Transport</option>
+                                <option value="Housing">Housing</option>
+                                <option value="Utilities">Utilities</option>
+                                <option value="Healthcare">Healthcare</option>
+                                <option value="Entertainment">Entertainment</option>
+                                <option value="Shopping">Shopping</option>
+                                <option value="Education">Education</option>
+                                <option value="Salary">Salary</option>
+                                <option value="Freelance">Freelance</option>
+                                <option value="Investment">Investment</option>
+                                <option value="Other">Other</option>
                             </select>
                         </div>
                         <div class="col-md-6 mb-3">
@@ -296,12 +323,24 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('transId').value = '';
         modalTitle.textContent = 'Add Transaction';
         transactionForm.action = "{{ url_for('transaction.add_transaction') }}";
+        
+        // Show AI Entry Section when adding
+        document.getElementById('aiEntrySection').style.display = 'block';
+        document.getElementById('aiEntryDivider').style.display = 'block';
+        if (document.getElementById('aiStatusMessage')) {
+            document.getElementById('aiStatusMessage').textContent = 'Describe your transaction naturally.';
+            document.getElementById('aiStatusMessage').className = 'text-muted mt-1 d-block';
+        }
     });
 
     // Populate form when clicking EDIT
     document.querySelectorAll('.edit-btn').forEach(btn => {
         btn.addEventListener('click', function() {
             modalTitle.textContent = 'Edit Transaction';
+            
+            // Hide AI Entry Section when editing (it's confusing to AI parse an edit)
+            document.getElementById('aiEntrySection').style.display = 'none';
+            document.getElementById('aiEntryDivider').style.display = 'none';
             
             const id = this.getAttribute('data-id');
             document.getElementById('transId').value = id;
@@ -313,11 +352,10 @@ document.addEventListener('DOMContentLoaded', function() {
             document.getElementById('transCategory').value = cat === 'None' ? '' : cat;
             
             // Set action to the edit route
-            transactionForm.action = `/transaction/edit/₹{id}`;
+            transactionForm.action = `/transaction/edit/${id}`;
             
-            // Determine type based on amount
-            const amount = parseFloat(this.getAttribute('data-amount'));
-            document.getElementById('transType').value = amount > 0 ? 'income' : 'expense';
+            // Set type
+            document.getElementById('transType').value = this.getAttribute('data-type');
 
             // Show modal
             new bootstrap.Modal(addTransactionModal).show();
@@ -385,6 +423,90 @@ document.addEventListener('DOMContentLoaded', function() {
                 Promise.all(checkedIds.map(id => axios.delete(`/transaction/delete/${id}`)))
                     .then(() => location.reload())
                     .catch(() => alert('Error deleting some transactions.'));
+            }
+        });
+    }
+
+    // --- 5. AI Smart Entry Logic ---
+    const btnAiParse = document.getElementById('btnAiParse');
+    const aiInputText = document.getElementById('aiInputText');
+    
+    if (btnAiParse && aiInputText) {
+        aiInputText.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                btnAiParse.click();
+            }
+        });
+
+        btnAiParse.addEventListener('click', async function() {
+            const aiInputText = document.getElementById('aiInputText').value;
+            if (!aiInputText) return;
+            
+            const btnText = document.getElementById('aiParseText');
+            const btnSpinner = document.getElementById('aiParseSpinner');
+            const statusMsg = document.getElementById('aiStatusMessage');
+            
+            // UI Loading state
+            btnAiParse.disabled = true;
+            btnText.classList.add('d-none');
+            btnSpinner.classList.remove('d-none');
+            statusMsg.textContent = "Analyzing...";
+            statusMsg.className = "text-info mt-1 d-block";
+            
+            try {
+                const response = await fetch('{{ url_for("transaction.parse_transaction") }}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ text: aiInputText })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success && result.data) {
+                    const data = result.data;
+                    
+                    // Populate form fields using specific IDs in this template
+                    if (data.amount) document.getElementById('transAmount').value = data.amount;
+                    if (data.description) document.getElementById('transDesc').value = data.description;
+                    if (data.date) document.getElementById('transDate').value = data.date;
+                    
+                    // Handle type select
+                    if (data.type) {
+                        document.getElementById('transType').value = data.type.toLowerCase();
+                    }
+                    
+                    // Handle category select
+                    if (data.category) {
+                        const categorySelect = document.getElementById('transCategory');
+                        const categoryFormatted = data.category.charAt(0).toUpperCase() + data.category.slice(1).toLowerCase();
+                        
+                        let optionExists = Array.from(categorySelect.options).some(opt => opt.value === categoryFormatted);
+                        if (!optionExists) {
+                            categorySelect.value = "Other"; // Fallback to uncat/other if not match exactly, maybe check if "Other" exists
+                            // Or leave as is
+                        } else {
+                            categorySelect.value = categoryFormatted;
+                        }
+                    }
+                    
+                    statusMsg.textContent = "Successfully auto-filled!";
+                    statusMsg.className = "text-success mt-1 d-block";
+                } else {
+                    statusMsg.textContent = result.message || "Could not parse. Please fill manually.";
+                    statusMsg.className = "text-danger mt-1 d-block";
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                statusMsg.textContent = "An error occurred connecting to AI service.";
+                statusMsg.className = "text-danger mt-1 d-block";
+            } finally {
+                // Restore UI
+                btnAiParse.disabled = false;
+                btnText.classList.remove('d-none');
+                btnSpinner.classList.add('d-none');
             }
         });
     }
